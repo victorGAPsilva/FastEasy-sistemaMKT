@@ -36,13 +36,17 @@ public class MainController {
     private final TabelaCategorias tabelaCategorias;
     private final FormFornecedor formFornecedor;
     private final TabelaFornecedores tabelaFornecedores;
+    private final TelaPdv telaPdv;
+    private final TelaHistoricoVendas telaHistoricoVendas;
 
     @FXML private VBox conteudoPrincipal;
     @FXML private Label tituloAreaPrincipal;
     @FXML private Label statusBar;
+    @FXML private Button btnPdv;
     @FXML private Button btnProdutos;
     @FXML private Button btnCategorias;
     @FXML private Button btnFornecedores;
+    @FXML private Button btnVendas;
     @FXML private Button btnSair;
 
     private VBox telaProdutos;
@@ -57,7 +61,9 @@ public class MainController {
                           FormCategoria formCategoria,
                           TabelaCategorias tabelaCategorias,
                           FormFornecedor formFornecedor,
-                          TabelaFornecedores tabelaFornecedores) {
+                          TabelaFornecedores tabelaFornecedores,
+                          TelaPdv telaPdv,
+                          TelaHistoricoVendas telaHistoricoVendas) {
         this.productService = productService;
         this.categoryService = categoryService;
         this.supplierService = supplierService;
@@ -67,12 +73,15 @@ public class MainController {
         this.tabelaCategorias = tabelaCategorias;
         this.formFornecedor = formFornecedor;
         this.tabelaFornecedores = tabelaFornecedores;
+        this.telaPdv = telaPdv;
+        this.telaHistoricoVendas = telaHistoricoVendas;
     }
 
     @FXML
     public void initialize() {
         montarTelas();
-        handleMenuProdutos(null);
+        configurarAtalhos();
+        handleMenuPdv(null);
     }
 
     private void montarTelas() {
@@ -117,6 +126,32 @@ public class MainController {
         tabelaFornecedores.atualizarLista();
         formProduto.recarregarDados();
         marcarAtivo(btnFornecedores);
+    }
+
+    @FXML
+    private void handleMenuPdv(ActionEvent event) {
+        tituloAreaPrincipal.setText("PDV — Frente de Caixa");
+        definirStatus("Registre produtos pelo código de barras e finalize a venda (F4)");
+        conteudoPrincipal.getChildren().setAll(telaPdv);
+        telaPdv.aoExibir();
+        marcarAtivo(btnPdv);
+    }
+
+    @FXML
+    private void handleMenuVendas(ActionEvent event) {
+        tituloAreaPrincipal.setText("Histórico de Vendas");
+        definirStatus("Consulta de vendas realizadas");
+        conteudoPrincipal.getChildren().setAll(telaHistoricoVendas);
+        telaHistoricoVendas.atualizarLista();
+        marcarAtivo(btnVendas);
+    }
+
+    private void configurarAtalhos() {
+        conteudoPrincipal.sceneProperty().addListener((observable, anterior, scene) -> {
+            if (scene != null) {
+                telaPdv.registrarAtalhos(scene);
+            }
+        });
     }
 
     @FXML
@@ -242,7 +277,7 @@ public class MainController {
     }
 
     private void marcarAtivo(Button ativo) {
-        for (Button b : new Button[]{btnProdutos, btnCategorias, btnFornecedores}) {
+        for (Button b : new Button[]{btnPdv, btnProdutos, btnCategorias, btnFornecedores, btnVendas}) {
             if (b != null) {
                 b.getStyleClass().remove("active");
             }

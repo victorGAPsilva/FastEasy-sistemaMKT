@@ -53,6 +53,8 @@ public class ProductService {
         if (product.getUnidadeMedida() == null) {
             product.setUnidadeMedida(UnidadeMedida.UN);
         }
+        // O estoque inicial é sempre zero: entradas são registradas pelo StockService.
+        product.setEstoqueAtual(BigDecimal.ZERO);
         product.setDataCriacao(LocalDateTime.now());
         product.setDataAtualizacao(null);
 
@@ -116,6 +118,23 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Optional<Product> buscarPorId(Long id) {
         return productRepository.findById(id);
+    }
+
+    /**
+     * Busca um produto pelo código de barras ou, não encontrando, pelo SKU.
+     * Usado pela leitura do código de barras no PDV.
+     */
+    @Transactional(readOnly = true)
+    public Optional<Product> buscarPorCodigo(String codigo) {
+        if (codigo == null || codigo.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        String c = codigo.trim();
+        Optional<Product> produto = productRepository.findByCodigoBarras(c);
+        if (produto.isEmpty()) {
+            produto = productRepository.findBySku(c);
+        }
+        return produto;
     }
 
     @Transactional(readOnly = true)

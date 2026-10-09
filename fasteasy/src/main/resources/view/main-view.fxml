@@ -20,9 +20,11 @@
             <Label text="Gestão de Supermercado" styleClass="sidebar-subtitle"/>
             <Separator/>
             <VBox fx:id="menuLateral" spacing="2">
+                <Button fx:id="btnPdv" text="  PDV (Frente de Caixa)" styleClass="menu-button" onAction="#handleMenuPdv"/>
                 <Button fx:id="btnProdutos" text="  Produtos" styleClass="menu-button" onAction="#handleMenuProdutos"/>
                 <Button fx:id="btnCategorias" text="  Categorias" styleClass="menu-button" onAction="#handleMenuCategorias"/>
                 <Button fx:id="btnFornecedores" text="  Fornecedores" styleClass="menu-button" onAction="#handleMenuFornecedores"/>
+                <Button fx:id="btnVendas" text="  Histórico de Vendas" styleClass="menu-button" onAction="#handleMenuVendas"/>
             </VBox>
             <Region VBox.vgrow="ALWAYS"/>
             <Button fx:id="btnSair" text="  Sair" styleClass="menu-button" onAction="#handleSair"/>

@@ -1,10 +1,12 @@
 package com.fasteasy.presentation.view;
 
 import com.fasteasy.domain.Category;
+import com.fasteasy.domain.Dinheiro;
 import com.fasteasy.domain.Product;
 import com.fasteasy.presentation.util.TarefaAssincrona;
 import com.fasteasy.service.CategoryService;
 import com.fasteasy.service.ProductService;
+import com.fasteasy.service.StockService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -19,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.function.Consumer;
 
 /**
@@ -34,6 +37,7 @@ public class TabelaProdutos extends VBox {
 
     private final ProductService productService;
     private final CategoryService categoryService;
+    private final StockService stockService;
 
     private final TableView<Product> tabela = new TableView<>();
     private final TextField txtPesquisa = new TextField();
@@ -45,9 +49,12 @@ public class TabelaProdutos extends VBox {
     private Consumer<Product> onAtivarDesativar;
 
     @Autowired
-    public TabelaProdutos(ProductService productService, CategoryService categoryService) {
+    public TabelaProdutos(ProductService productService,
+                          CategoryService categoryService,
+                          StockService stockService) {
         this.productService = productService;
         this.categoryService = categoryService;
+        this.stockService = stockService;
         inicializarComponentes();
         configurarColunas();
         carregarFiltroCategorias();
@@ -126,6 +133,11 @@ public class TabelaProdutos extends VBox {
         });
         colPreco.setMinWidth(110);
 
+        TableColumn<Product, String> colEstoque = new TableColumn<>("Estoque");
+        colEstoque.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(
+                Dinheiro.formatarQuantidade(cellData.getValue().getEstoqueAtual())));
+        colEstoque.setMinWidth(90);
+
         TableColumn<Product, String> colStatus = new TableColumn<>("Status");
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
         colStatus.setCellFactory(col -> new TableCell<>() {
@@ -147,13 +159,16 @@ public class TabelaProdutos extends VBox {
         TableColumn<Product, Void> colAcoes = new TableColumn<>("Ações");
         colAcoes.setCellFactory(param -> new TableCell<>() {
             private final Button btnEditar = new Button("Editar");
+            private final Button btnEntrada = new Button("Entrada");
             private final Button btnAtivarDesativar = new Button("Desativar");
-            private final HBox pane = new HBox(5, btnEditar, btnAtivarDesativar);
+            private final HBox pane = new HBox(5, btnEditar, btnEntrada, btnAtivarDesativar);
 
             {
                 btnEditar.getStyleClass().add("button-primary");
+                btnEntrada.getStyleClass().add("button-secondary");
                 btnAtivarDesativar.getStyleClass().add("button-secondary");
                 btnEditar.setStyle("-fx-font-size: 11; -fx-padding: 4 10 4 10;");
+                btnEntrada.setStyle("-fx-font-size: 11; -fx-padding: 4 10 4 10;");
                 btnAtivarDesativar.setStyle("-fx-font-size: 11; -fx-padding: 4 10 4 10;");
 
                 btnEditar.setOnAction(e -> {
@@ -161,6 +176,10 @@ public class TabelaProdutos extends VBox {
                     if (onEditar != null) {
                         onEditar.accept(produto);
                     }
+                });
+                btnEntrada.setOnAction(e -> {
+                    Product produto = getTableView().getItems().get(getIndex());
+                    registrarEntrada(produto);
                 });
                 btnAtivarDesativar.setOnAction(e -> {
                     Product produto = getTableView().getItems().get(getIndex());
@@ -182,9 +201,9 @@ public class TabelaProdutos extends VBox {
                 }
             }
         });
-        colAcoes.setMinWidth(170);
+        colAcoes.setMinWidth(230);
 
-        tabela.getColumns().addAll(colNome, colSku, colCodigoBarras, colCategoria, colPreco, colStatus, colAcoes);
+        tabela.getColumns().addAll(colNome, colSku, colCodigoBarras, colCategoria, colPreco, colEstoque, colStatus, colAcoes);
     }
 
     private void carregarFiltroCategorias() {
@@ -231,6 +250,49 @@ public class TabelaProdutos extends VBox {
 
     private void logErro(String operacao, Throwable e) {
         log.error("Erro ao {}: {}", operacao, e.getMessage(), e);
+    }
+
+    /**
+     * Registra uma entrada de estoque para o produto via StockService.
+     * A quantidade é obrigatória e maior que zero.
+     */
+    private void registrarEntrada(Product produto) {
+        TextInputDialog dialog = new TextInputDialog("1");
+        dialog.setTitle("Entrada de estoque");
+        dialog.setHeaderText("Entrada de estoque para \"" + produto.getNome() + "\"");
+        dialog.setContentText("Quantidade:");
+        if (getScene() != null) {
+            dialog.initOwner(getScene().getWindow());
+        }
+        dialog.showAndWait().ifPresent(valor -> {
+            BigDecimal quantidade;
+            try {
+                quantidade = new BigDecimal(valor.trim().replace(",", "."));
+            } catch (NumberFormatException e) {
+                alerta("Quantidade inválida.");
+                return;
+            }
+            TarefaAssincrona.executar(
+                    () -> stockService.registrarEntrada(produto.getId(), quantidade, "Entrada manual"),
+                    movimentacao -> filtrarTabela(),
+                    e -> {
+                        log.error("Erro ao registrar entrada de estoque: {}", e.getMessage(), e);
+                        alerta(e instanceof IllegalArgumentException
+                                ? e.getMessage()
+                                : "Não foi possível registrar a entrada de estoque.");
+                    });
+        });
+    }
+
+    private void alerta(String mensagem) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Atenção");
+        alert.setHeaderText(null);
+        alert.setContentText(mensagem);
+        if (getScene() != null) {
+            alert.initOwner(getScene().getWindow());
+        }
+        alert.showAndWait();
     }
 
     public void atualizarLista() {

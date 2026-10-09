@@ -72,6 +72,15 @@ public class Product implements Serializable {
     @Column(name = "estoque_maximo", precision = 19, scale = 4)
     private BigDecimal estoqueMaximo;
 
+    /**
+     * Quantidade atual em estoque. Gerenciada exclusivamente pelo
+     * StockService (entradas, saídas e ajustes) — nunca alterada diretamente
+     * pela interface.
+     */
+    @PositiveOrZero(message = "O estoque atual não pode ser negativo")
+    @Column(name = "estoque_atual", precision = 19, scale = 4, nullable = false)
+    private BigDecimal estoqueAtual;
+
     @ManyToOne
     @JoinColumn(name = "fornecedor_principal_id")
     private Supplier fornecedorPrincipal;
@@ -90,6 +99,7 @@ public class Product implements Serializable {
         this.status = "ATIVO";
         this.unidadeMedida = UnidadeMedida.UN;
         this.estoqueMinimo = 0;
+        this.estoqueAtual = BigDecimal.ZERO;
         this.dataCriacao = LocalDateTime.now();
     }
 
@@ -193,6 +203,25 @@ public class Product implements Serializable {
 
     public void setEstoqueMaximo(BigDecimal estoqueMaximo) {
         this.estoqueMaximo = estoqueMaximo;
+    }
+
+    public BigDecimal getEstoqueAtual() {
+        return estoqueAtual;
+    }
+
+    public void setEstoqueAtual(BigDecimal estoqueAtual) {
+        this.estoqueAtual = estoqueAtual;
+    }
+
+    /**
+     * Verifica se há estoque suficiente para atender a quantidade informada.
+     */
+    public boolean temEstoqueSuficiente(BigDecimal quantidade) {
+        if (quantidade == null) {
+            return false;
+        }
+        BigDecimal disponivel = estoqueAtual != null ? estoqueAtual : BigDecimal.ZERO;
+        return disponivel.compareTo(quantidade) >= 0;
     }
 
     public Supplier getFornecedorPrincipal() {

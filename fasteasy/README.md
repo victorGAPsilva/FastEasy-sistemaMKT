@@ -1,7 +1,7 @@
 # FastEasy — Sistema de Gestão de Supermercado
 
 Aplicação **desktop** para gestão de supermercado, construída com **Java 21 + JavaFX + Spring Boot + PostgreSQL**.
-Este repositório contém a **Parte 1** (fundação do projeto) e a **Parte 2** (módulo de cadastro de **Produtos**, **Fornecedores** e **Categorias**).
+Este repositório contém a **Parte 1** (fundação do projeto), a **Parte 2** (cadastro de **Produtos**, **Fornecedores** e **Categorias**), a base de **controle de estoque** e a **Parte 4** (frente de caixa — **PDV** — e histórico de vendas).
 
 ---
 
@@ -46,11 +46,11 @@ O código está organizado em camadas, dentro de `com.fasteasy`:
 com.fasteasy
 ├── application      → Ponto de entrada (JavaFX), logging e exceções de aplicação
 ├── config           → Configuração Spring Boot (component/entity/repository scan)
-├── domain           → Entidades JPA (Product, Supplier, Category, UnidadeMedida)
+├── domain           → Entidades JPA (Product, Supplier, Category, Sale, SaleItem, …) e regras puras (CarrinhoVenda, Dinheiro)
 ├── repository       → Repositórios Spring Data JPA
-├── service          → Regras de negócio (ProductService, SupplierService, CategoryService)
+├── service          → Regras de negócio (ProductService, SupplierService, CategoryService, StockService, SaleService)
 ├── validator        → Validadores puros (CPF/CNPJ e código de barras EAN)
-└── presentation     → JavaFX: controladores e views (formulários e tabelas)
+└── presentation     → JavaFX: controladores e views (formulários, tabelas, PDV e histórico)
 ```
 
 A UI **não acessa o banco diretamente**: todos os formulários e tabelas conversam apenas com os **serviços de aplicação**.
@@ -116,9 +116,25 @@ mvn clean javafx:run
 
 O plugin `javafx-maven-plugin` resolve automaticamente os módulos nativos do JavaFX para o sistema operacional em uso — este é o modo recomendado de execução.
 
-Na primeira execução, o Flyway aplica a migração que cria as tabelas de categorias, fornecedores e produtos.
+Na primeira execução, o Flyway aplica as migrações que criam as tabelas de categorias, fornecedores, produtos, estoque e vendas.
 
-A janela principal possui um **menu lateral verde** com as seções **Produtos**, **Categorias** e **Fornecedores**, uma **área principal** com os formulários/tabelas e uma **barra de status**.
+A janela principal possui um **menu lateral verde** com as seções **Produtos**, **Categorias**, **Fornecedores**, **PDV** e **Vendas**, uma **área principal** com os formulários/tabelas e uma **barra de status**.
+
+### Usando o PDV (frente de caixa)
+
+1. Em **Produtos**, cadastre o item e use a ação **Entrada** para lançar a quantidade inicial em estoque (integração com o `StockService`).
+2. Abra **PDV**. O campo de **código de barras** já vem com o foco. Digite/leia o código e pressione **Enter** para localizar.
+3. O leitor USB de código de barras funciona como teclado — nenhuma integração de hardware é necessária.
+4. Se preferir, use **F2** (buscar por nome/SKU) para abrir o seletor de produtos.
+5. Ajuste a quantidade pelos botões **+ / −**, edite a quantidade manualmente ou remova itens (**Delete** ou botão). Itens repetidos apenas incrementam a quantidade, respeitando o estoque.
+6. Confira o resumo (itens, subtotal, descontos e total) e pressione **F4** (ou **Pagamento**).
+7. No diálogo de pagamento, informe a forma (**Dinheiro**, **PIX**, **Débito**, **Crédito**), o valor aplicado e, em dinheiro, o valor recebido (o troco é calculado). É possível **combinar** formas: a soma aplicada deve ser exatamente igual ao total.
+8. Confirme a venda. A baixa de estoque e o registro da venda são **atômicos** (`SaleService`); em caso de erro, nada é gravado.
+9. O **comprovante** (não fiscal) é exibido e pode ser impresso. Se a impressão falhar, a venda permanece registrada e o comprovante pode ser reaberto em **Vendas**.
+
+Atalhos: **F2** buscar produto, **F4** pagamento, **Delete** remover item selecionado, **Esc** cancelar/fechar.
+
+O campo de código de barras é limpo e o foco retorna a ele após cada item adicionado; códigos desconhecidos exibem uma mensagem clara sem travar a tela.
 
 ### Empacotamento
 
@@ -148,6 +164,10 @@ Cobertura de testes:
 - `CategoryServiceTest` — cadastro, duplicidade, edição e desativação
 - `SupplierServiceTest` — cadastro, documento inválido, e-mail, duplicidade, desativação
 - `ProductServiceTest` — todas as regras de negócio de produto
+- `CarrinhoVendaTest` — carrinho: inclusão, repetição, quantidade, remoção, estoque, descontos e trava de finalização duplicada
+- `StockServiceTest` — entradas, saídas, ajustes, recusa de estoque insuficiente e movimentação `SALE_EXIT`
+- `SaleServiceTest` — finalização, validação de pagamentos (troco, combinado, soma) e revalidações
+- `VendaIntegracaoTest` — integração com H2: baixa de estoque, rollback, valores históricos, duplicidade e **concorrência no último item**
 - `PersistenciaProdutoTest` — persistência e relacionamentos (JPA + H2)
 
 ---
@@ -173,6 +193,23 @@ Cobertura de testes:
 - **CPF/CNPJ** e **e-mail** validados quando informados.
 - **Exclusão lógica** via status `ATIVO`/`INATIVO`.
 
+### Estoque
+
+- Toda entrada, saída ou ajuste passa pelo `StockService` e gera uma **movimentação** (`ENTRADA`, `SAIDA`, `AJUSTE` ou `SALE_EXIT`).
+- O estoque **nunca fica negativo**: saídas maiores que o saldo disponível são recusadas.
+- As operações usam quantidade em `BigDecimal`.
+- Na finalização da venda, a leitura do produto acontece com **bloqueio pessimista** (`SELECT … FOR UPDATE`), evitando venda duplicada do último item sob concorrência.
+
+### Vendas (PDV)
+
+- O carrinho (`CarrinhoVenda`) valida: produto **existente e ativo**, **preço não negativo**, **quantidade > 0** e **≤ estoque**; recalcula subtotal, descontos e total a cada alteração.
+- A **finalização** é feita exclusivamente pelo `SaleService`, em uma única transação: revalida produtos, preço, status e estoque; grava a venda, os itens (com **nome, código e preço históricos**) e os pagamentos; dá baixa no estoque; e marca a venda como `COMPLETED`. Qualquer falha **reverte tudo**.
+- **Carrinhos em andamento não são persistidos**; a venda só existe após a confirmação.
+- **Pagamentos**: a soma dos valores aplicados deve ser **exatamente igual** ao total. Em dinheiro, o valor recebido pode ser maior, gerando **troco** (o troco é calculado apenas sobre o dinheiro). PIX, débito e crédito registram apenas a forma e o valor.
+- **Trava de duplicidade**: o carrinho possui um guarda (`AtomicBoolean`) que impede finalizar a mesma venda duas vezes; o serviço também rejeita uma segunda tentativa.
+- **Alteração manual de preço/desconto** exige autorização; como não há módulo de permissões, a edição de preço/desconto fica **desabilitada** no PDV.
+- Vendas concluídas **não são editadas** silenciosamente. O histórico permite consultar por número, período e status, ver detalhes e reimprimir o comprovante.
+
 ### Integridade no banco de dados
 
 Além da validação em Java, a migração define restrições no banco:
@@ -184,6 +221,8 @@ Além da validação em Java, a migração define restrições no banco:
 - `CHECK (status IN ('ATIVO','INATIVO'))`
 - Índices únicos parciais para `sku` e `codigo_barras` (quando não nulos)
 - Chaves estrangeiras de produto → categoria e produto → fornecedor principal
+- Estoque: `CHECK (estoque_atual >= 0)` e restrições de quantidade nos movimentos
+- Vendas: número único, `CHECK` de valores não negativos, integridade venda ↔ itens e venda ↔ pagamentos, e FK de movimentação de estoque → venda (`SALE_EXIT`)
 
 ---
 
@@ -192,8 +231,10 @@ Além da validação em Java, a migração define restrições no banco:
 As migrações ficam em `src/main/resources/db/migration`:
 
 - `V1.0.1__create_product_tables.sql` — tabelas de categorias, fornecedores e produtos, índices e restrições.
+- `V1.0.2__create_stock_tables.sql` — coluna de estoque atual e tabela de movimentações.
+- `V1.0.3__create_sales_tables.sql` — tabelas de vendas, itens e pagamentos, além do vínculo da movimentação `SALE_EXIT` com a venda.
 
-O Flyway roda automaticamente na inicialização da aplicação (configurável em `application.properties`).
+O Flyway roda automaticamente na inicialização da aplicação (configurável em `application.properties`). As migrações são **incrementais**: migrações já aplicadas não são alteradas.
 
 ---
 
@@ -229,6 +270,6 @@ fasteasy/
 
 ## Escopo e limitações
 
-**Incluído:** fundação do projeto (Parte 1) e cadastro de produtos, fornecedores e categorias (Parte 2).
+**Incluído:** fundação do projeto (Parte 1); cadastro de produtos, fornecedores e categorias (Parte 2); base de controle de estoque; e frente de caixa (PDV) com finalização de venda, baixa de estoque, comprovante e histórico de vendas (Parte 4).
 
-**Fora de escopo (não implementado):** PDV, caixa, controle de estoque completo e módulos de vendas. A quantidade em estoque será controlada por um módulo futuro. O sistema foi projetado para que esses módulos sejam adicionados sem quebrar o que já existe.
+**Fora de escopo (não implementado nesta etapa):** fechamento/abertura de caixa, compras de fornecedores, relatórios gerenciais completos, integração com gateways de pagamento (cartão/PIX online), documentos fiscais e coleta de dados sensíveis de cartão. **Cancelamento de venda com estorno de estoque** não está disponível na interface nesta etapa (o modelo de dados já contempla o status `CANCELLED`, mas a operação fica para uma etapa futura, de forma explícita e auditável). O sistema foi projetado para que esses módulos sejam adicionados sem quebrar o que já existe.

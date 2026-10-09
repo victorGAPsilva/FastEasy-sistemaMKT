@@ -1,7 +1,9 @@
 package com.fasteasy.repository;
 
 import com.fasteasy.domain.Product;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -49,4 +51,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
      */
     @Query("SELECT p FROM Product p WHERE p.status = 'ATIVO' ORDER BY p.nome ASC")
     List<Product> listarAtivosParaVenda();
+
+    /**
+     * Busca o produto aplicando bloqueio pessimista de escrita.
+     *
+     * <p>Usado para serializar o consumo de estoque entre vendas simultâneas,
+     * garantindo que o estoque nunca fique negativo.</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Product p WHERE p.id = :id")
+    Optional<Product> buscarParaAtualizacao(@Param("id") Long id);
 }

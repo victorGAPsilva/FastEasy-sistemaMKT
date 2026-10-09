@@ -170,3 +170,21 @@
     -fx-padding: 6 12 6 12;
     -fx-font-size: 12px;
 }
+
+/* --- PDV (Frente de Caixa) --- */
+.pdv-total {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1b5e20;
+}
+
+.pdv-caixa {
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+.pdv-data-hora {
+    -fx-text-fill: #546e7a;
+    -fx-font-size: 13px;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+}

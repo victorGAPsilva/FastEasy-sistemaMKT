@@ -36,6 +36,18 @@ public class Sale {
     @Column(name = "status", nullable = false, length = 20)
     private StatusVenda status;
 
+    /**
+     * Sessão de caixa à qual a venda pertence.
+     *
+     * <p>Pode ser nula para vendas registradas sem fluxo de caixa (compatível
+     * com vendas anteriores à introdução do módulo). Quando a venda é feita
+     * pelo PDV com uma sessão aberta, o vínculo é obrigatório e validado dentro
+     * da mesma transação de finalização.</p>
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cash_session_id")
+    private CashSession cashSession;
+
     @Column(name = "subtotal", precision = 19, scale = 4, nullable = false)
     private BigDecimal subtotal;
 
@@ -180,6 +192,14 @@ public class Sale {
 
     public void setItens(List<SaleItem> itens) {
         this.itens = itens;
+    }
+
+    public CashSession getCashSession() {
+        return cashSession;
+    }
+
+    public void setCashSession(CashSession cashSession) {
+        this.cashSession = cashSession;
     }
 
     public List<SalePayment> getPagamentos() {

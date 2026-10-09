@@ -1,6 +1,8 @@
 package com.fasteasy.service;
 
+import com.fasteasy.domain.CaixaInvalidoException;
 import com.fasteasy.domain.CarrinhoVenda;
+import com.fasteasy.domain.CashSession;
 import com.fasteasy.domain.Dinheiro;
 import com.fasteasy.domain.FormaPagamento;
 import com.fasteasy.domain.ItemCarrinho;
@@ -8,8 +10,10 @@ import com.fasteasy.domain.Product;
 import com.fasteasy.domain.Sale;
 import com.fasteasy.domain.SaleItem;
 import com.fasteasy.domain.SalePayment;
+import com.fasteasy.domain.StatusSessaoCaixa;
 import com.fasteasy.domain.StatusVenda;
 import com.fasteasy.domain.VendaInvalidaException;
+import com.fasteasy.repository.CashSessionRepository;
 import com.fasteasy.repository.ProductRepository;
 import com.fasteasy.repository.SaleRepository;
 import com.fasteasy.service.dto.ItemVendaDTO;
@@ -41,13 +45,16 @@ public class SaleService {
     private final ProductRepository productRepository;
     private final SaleRepository saleRepository;
     private final StockService stockService;
+    private final CashSessionRepository cashSessionRepository;
 
     public SaleService(ProductRepository productRepository,
                        SaleRepository saleRepository,
-                       StockService stockService) {
+                       StockService stockService,
+                       CashSessionRepository cashSessionRepository) {
         this.productRepository = productRepository;
         this.saleRepository = saleRepository;
         this.stockService = stockService;
+        this.cashSessionRepository = cashSessionRepository;
     }
 
     /**
@@ -59,6 +66,23 @@ public class SaleService {
      * @return detalhe completo da venda gravada
      */
     public VendaDetalhe finalizarVenda(CarrinhoVenda carrinho, List<PagamentoDTO> pagamentos, String operador) {
+        return finalizarVenda(carrinho, pagamentos, operador, null);
+    }
+
+    /**
+     * Finaliza uma venda associando-a a uma sessão de caixa.
+     *
+     * <p>A sessão é recarregada com bloqueio pessimista de escrita e validada
+     * dentro da mesma transação da finalização: se estiver fechada (ou tiver
+     * sido fechada concorrentemente), a venda é recusada e nada é gravado. A
+     * associação garante que os pagamentos alimentem os totais da sessão
+     * correta sem duplicidade.</p>
+     *
+     * @param sessaoCaixa sessão aberta a associar; se {@code null}, a venda é
+     *                    gravada sem vínculo de caixa (compatibilidade)
+     */
+    public VendaDetalhe finalizarVenda(CarrinhoVenda carrinho, List<PagamentoDTO> pagamentos, String operador,
+                                       CashSession sessaoCaixa) {
         if (carrinho == null || carrinho.isVazio()) {
             throw new VendaInvalidaException("O carrinho está vazio");
         }
@@ -86,6 +110,11 @@ public class SaleService {
             sale.setOperador(normalizarOperador(operador));
             sale.setValorRecebido(BigDecimal.ZERO);
             sale.setTroco(BigDecimal.ZERO);
+
+            // Associa a sessão de caixa (se informada), validando-a sob bloqueio.
+            if (sessaoCaixa != null) {
+                sale.setCashSession(bloquearSessaoAberta(sessaoCaixa.getId()));
+            }
 
             // Primeira gravação: obtém o ID para compor o número da venda.
             sale = saleRepository.saveAndFlush(sale);
@@ -277,6 +306,22 @@ public class SaleService {
                 formas,
                 sale.getStatus(),
                 sale.getOperador());
+    }
+
+    /**
+     * Carrega a sessão com bloqueio de escrita e garante que está aberta.
+     * Serializa a finalização de venda com o fechamento do caixa.
+     */
+    private CashSession bloquearSessaoAberta(Long sessaoId) {
+        if (sessaoId == null) {
+            throw new CaixaInvalidoException("Sessão de caixa inválida. Abra o caixa e tente novamente.");
+        }
+        CashSession sessao = cashSessionRepository.buscarParaAtualizacao(sessaoId)
+                .orElseThrow(() -> new CaixaInvalidoException("Sessão de caixa não encontrada."));
+        if (sessao.getStatus() != StatusSessaoCaixa.OPEN) {
+            throw new CaixaInvalidoException("O caixa está fechado. Abra um novo caixa para registrar vendas.");
+        }
+        return sessao;
     }
 
     private String gerarNumero(Long id) {

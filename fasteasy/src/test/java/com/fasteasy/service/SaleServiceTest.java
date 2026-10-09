@@ -48,6 +48,9 @@ class SaleServiceTest {
     @Mock
     private StockService stockService;
 
+    @Mock
+    private com.fasteasy.repository.CashSessionRepository cashSessionRepository;
+
     @InjectMocks
     private SaleService saleService;
 

@@ -1,10 +1,15 @@
 package com.fasteasy.presentation.view;
 
+import com.fasteasy.domain.CaixaInvalidoException;
 import com.fasteasy.domain.CarrinhoVenda;
+import com.fasteasy.domain.CashRegister;
+import com.fasteasy.domain.CashSession;
 import com.fasteasy.domain.Dinheiro;
 import com.fasteasy.domain.ItemCarrinho;
 import com.fasteasy.domain.Product;
 import com.fasteasy.presentation.util.TarefaAssincrona;
+import com.fasteasy.service.CashRegisterService;
+import com.fasteasy.service.CashSessionService;
 import com.fasteasy.service.ProductService;
 import com.fasteasy.service.SaleService;
 import com.fasteasy.service.dto.PagamentoDTO;
@@ -53,6 +58,8 @@ public class TelaPdv extends VBox {
 
     private final ProductService productService;
     private final SaleService saleService;
+    private final CashRegisterService cashRegisterService;
+    private final CashSessionService cashSessionService;
 
     private final CarrinhoVenda carrinho = new CarrinhoVenda();
     private final ObservableList<ItemCarrinho> dados = FXCollections.observableArrayList();
@@ -62,6 +69,9 @@ public class TelaPdv extends VBox {
     private final TextField txtOperador = new TextField();
     private final Label lblDataHora = new Label();
     private final TableView<ItemCarrinho> tabela = new TableView<>();
+
+    private final ComboBox<CashRegister> cmbCaixa = new ComboBox<>();
+    private final Label lblSessaoStatus = new Label("—");
 
     private final Label lblQtdItens = new Label("0");
     private final Label lblSubtotal = new Label(Dinheiro.formatar(BigDecimal.ZERO));
@@ -73,9 +83,14 @@ public class TelaPdv extends VBox {
     private PauseTransition pausaCodigo;
     private boolean finalizando;
 
-    public TelaPdv(ProductService productService, SaleService saleService) {
+    public TelaPdv(ProductService productService,
+                        SaleService saleService,
+                        CashRegisterService cashRegisterService,
+                        CashSessionService cashSessionService) {
         this.productService = productService;
         this.saleService = saleService;
+        this.cashRegisterService = cashRegisterService;
+        this.cashSessionService = cashSessionService;
         setSpacing(12);
         setPadding(new Insets(4, 0, 0, 0));
         inicializarComponentes();
@@ -104,15 +119,32 @@ public class TelaPdv extends VBox {
         txtOperador.setPromptText("Operador");
         txtOperador.setPrefWidth(150);
 
-        Label caixa = new Label("Caixa: 1");
-        caixa.getStyleClass().add("pdv-caixa");
+        cmbCaixa.setPrefWidth(180);
+        cmbCaixa.setPromptText("Selecione o caixa");
+        cmbCaixa.setCellFactory(lv -> new ListCell<>() {
+            @Override protected void updateItem(CashRegister caixa, boolean empty) {
+                super.updateItem(caixa, empty);
+                setText(empty || caixa == null ? null : caixa.getNome());
+            }
+        });
+        cmbCaixa.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(CashRegister caixa, boolean empty) {
+                super.updateItem(caixa, empty);
+                setText(empty || caixa == null ? null : caixa.getNome());
+            }
+        });
+        cmbCaixa.valueProperty().addListener((obs, antigo, novo) -> atualizarSessao());
+
+        lblSessaoStatus.getStyleClass().add("pdv-caixa");
+        lblSessaoStatus.setStyle("-fx-font-weight: bold;");
         lblDataHora.getStyleClass().add("pdv-data-hora");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         HBox box = new HBox(12, titulo, spacer,
-                new Label("Operador:"), txtOperador, caixa, lblDataHora);
+                new Label("Operador:"), txtOperador,
+                new Label("Caixa:"), cmbCaixa, lblSessaoStatus, lblDataHora);
         box.setAlignment(Pos.CENTER_LEFT);
         box.getStyleClass().add("card");
         box.setPadding(new Insets(10, 14, 10, 14));
@@ -327,6 +359,54 @@ public class TelaPdv extends VBox {
     }
 
     // ------------------------------------------------------------------
+    // Sessão de caixa
+    // ------------------------------------------------------------------
+
+    private void carregarCaixas() {
+        TarefaAssincrona.executar(
+                () -> cashRegisterService.listarAtivos(),
+                caixas -> {
+                    Long selecionado = cmbCaixa.getValue() == null ? null : cmbCaixa.getValue().getId();
+                    cmbCaixa.setItems(FXCollections.observableArrayList(caixas));
+                    if (caixas.isEmpty()) {
+                        lblSessaoStatus.setText("Sem caixas");
+                        lblSessaoStatus.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+                        return;
+                    }
+                    CashRegister alvo = caixas.stream()
+                            .filter(c -> c.getId().equals(selecionado))
+                            .findFirst()
+                            .orElse(caixas.get(0));
+                    cmbCaixa.setValue(alvo);
+                    atualizarSessao();
+                },
+                e -> lblMensagem.setText("Não foi possível carregar os caixas."));
+    }
+
+    private void atualizarSessao() {
+        CashRegister caixa = cmbCaixa.getValue();
+        if (caixa == null) {
+            lblSessaoStatus.setText("Selecione caixa");
+            lblSessaoStatus.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+            return;
+        }
+        Long caixaId = caixa.getId();
+        TarefaAssincrona.executar(
+                () -> cashSessionService.buscarSessaoAberta(caixaId),
+                sessao -> {
+                    if (sessao.isPresent()) {
+                        CashSession s = sessao.get();
+                        lblSessaoStatus.setText("Aberto (" + s.getDataAbertura().format(FORMATO_DATA_HORA) + ")");
+                        lblSessaoStatus.setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;");
+                    } else {
+                        lblSessaoStatus.setText("Fechado");
+                        lblSessaoStatus.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+                    }
+                },
+                e -> lblSessaoStatus.setText("Erro"));
+    }
+
+    // ------------------------------------------------------------------
     // Atalhos e ciclo de exibição
     // ------------------------------------------------------------------
 
@@ -351,6 +431,7 @@ public class TelaPdv extends VBox {
 
     /** Chamado ao exibir a tela: atualiza valores e devolve o foco ao código. */
     public void aoExibir() {
+        carregarCaixas();
         atualizarTabela();
         atualizarResumo();
         Platform.runLater(txtCodigo::requestFocus);
@@ -533,24 +614,56 @@ public class TelaPdv extends VBox {
         btnPagamento.setDisable(true);
         definirMensagem("Finalizando venda...");
         String operador = txtOperador.getText();
+
+        CashRegister caixa = cmbCaixa.getValue();
+        if (caixa == null) {
+            mostrarAviso("Selecione um caixa antes de finalizar a venda.");
+            finalizando = false;
+            btnPagamento.setDisable(false);
+            return;
+        }
+
+        Long caixaId = caixa.getId();
         TarefaAssincrona.executar(
-                () -> saleService.finalizarVenda(carrinho, pagamentos, operador),
-                detalhe -> {
-                    finalizando = false;
-                    btnPagamento.setDisable(false);
-                    carrinho.limpar();
-                    atualizarTabela();
-                    atualizarResumo();
-                    definirMensagem("Venda " + detalhe.numero() + " finalizada — Total "
-                            + Dinheiro.formatar(detalhe.valorTotal()));
-                    ComprovanteDialog.mostrar(janela(), detalhe);
-                    Platform.runLater(txtCodigo::requestFocus);
+                () -> cashSessionService.buscarSessaoAberta(caixaId),
+                sessaoOpt -> {
+                    if (sessaoOpt.isEmpty()) {
+                        Platform.runLater(() -> {
+                            mostrarAviso("Não há sessão aberta no caixa " + caixa.getNome() + ". Abra o caixa antes de finalizar a venda.");
+                            finalizando = false;
+                            btnPagamento.setDisable(false);
+                        });
+                        return;
+                    }
+                    CashSession sessao = sessaoOpt.get();
+                    TarefaAssincrona.executar(
+                            () -> saleService.finalizarVenda(carrinho, pagamentos, operador, sessao),
+                            detalhe -> {
+                                finalizando = false;
+                                btnPagamento.setDisable(false);
+                                carrinho.limpar();
+                                atualizarTabela();
+                                atualizarResumo();
+                                definirMensagem("Venda " + detalhe.numero() + " finalizada — Total "
+                                        + Dinheiro.formatar(detalhe.valorTotal()));
+                                ComprovanteDialog.mostrar(janela(), detalhe);
+                                atualizarSessao();
+                                Platform.runLater(txtCodigo::requestFocus);
+                            },
+                            e -> {
+                                finalizando = false;
+                                btnPagamento.setDisable(false);
+                                definirMensagem("Falha ao finalizar a venda.");
+                                tratarErro("Não foi possível finalizar a venda", e);
+                            });
                 },
                 e -> {
-                    finalizando = false;
-                    btnPagamento.setDisable(false);
-                    definirMensagem("Falha ao finalizar a venda.");
-                    tratarErro("Não foi possível finalizar a venda", e);
+                    Platform.runLater(() -> {
+                        finalizando = false;
+                        btnPagamento.setDisable(false);
+                        definirMensagem("Falha ao verificar sessão de caixa.");
+                        tratarErro("Erro ao buscar sessão de caixa", e);
+                    });
                 });
     }
 

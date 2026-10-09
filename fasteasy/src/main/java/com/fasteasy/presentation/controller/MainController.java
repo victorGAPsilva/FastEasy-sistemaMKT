@@ -5,6 +5,8 @@ import com.fasteasy.domain.Product;
 import com.fasteasy.domain.Supplier;
 import com.fasteasy.presentation.util.TarefaAssincrona;
 import com.fasteasy.presentation.view.*;
+import com.fasteasy.service.CashRegisterService;
+import com.fasteasy.service.CashSessionService;
 import com.fasteasy.service.CategoryService;
 import com.fasteasy.service.ProductService;
 import com.fasteasy.service.SupplierService;
@@ -38,6 +40,8 @@ public class MainController {
     private final TabelaFornecedores tabelaFornecedores;
     private final TelaPdv telaPdv;
     private final TelaHistoricoVendas telaHistoricoVendas;
+    private final TelaCaixa telaCaixa;
+    private final TelaHistoricoCaixas telaHistoricoCaixas;
 
     @FXML private VBox conteudoPrincipal;
     @FXML private Label tituloAreaPrincipal;
@@ -47,6 +51,8 @@ public class MainController {
     @FXML private Button btnCategorias;
     @FXML private Button btnFornecedores;
     @FXML private Button btnVendas;
+    @FXML private Button btnCaixa;
+    @FXML private Button btnHistoricoCaixas;
     @FXML private Button btnSair;
 
     private VBox telaProdutos;
@@ -63,7 +69,9 @@ public class MainController {
                           FormFornecedor formFornecedor,
                           TabelaFornecedores tabelaFornecedores,
                           TelaPdv telaPdv,
-                          TelaHistoricoVendas telaHistoricoVendas) {
+                          TelaHistoricoVendas telaHistoricoVendas,
+                          TelaCaixa telaCaixa,
+                          TelaHistoricoCaixas telaHistoricoCaixas) {
         this.productService = productService;
         this.categoryService = categoryService;
         this.supplierService = supplierService;
@@ -75,6 +83,8 @@ public class MainController {
         this.tabelaFornecedores = tabelaFornecedores;
         this.telaPdv = telaPdv;
         this.telaHistoricoVendas = telaHistoricoVendas;
+        this.telaCaixa = telaCaixa;
+        this.telaHistoricoCaixas = telaHistoricoCaixas;
     }
 
     @FXML
@@ -144,6 +154,24 @@ public class MainController {
         conteudoPrincipal.getChildren().setAll(telaHistoricoVendas);
         telaHistoricoVendas.atualizarLista();
         marcarAtivo(btnVendas);
+    }
+
+    @FXML
+    private void handleMenuCaixa(ActionEvent event) {
+        tituloAreaPrincipal.setText("Gestão de Caixa");
+        definirStatus("Abertura, movimentações e fechamento de caixa");
+        conteudoPrincipal.getChildren().setAll(telaCaixa);
+        telaCaixa.aoExibir();
+        marcarAtivo(btnCaixa);
+    }
+
+    @FXML
+    private void handleMenuHistoricoCaixas(ActionEvent event) {
+        tituloAreaPrincipal.setText("Histórico de Caixas");
+        definirStatus("Consulta de sessões e fechamentos anteriores");
+        conteudoPrincipal.getChildren().setAll(telaHistoricoCaixas);
+        telaHistoricoCaixas.atualizarLista();
+        marcarAtivo(btnHistoricoCaixas);
     }
 
     private void configurarAtalhos() {
@@ -277,7 +305,7 @@ public class MainController {
     }
 
     private void marcarAtivo(Button ativo) {
-        for (Button b : new Button[]{btnPdv, btnProdutos, btnCategorias, btnFornecedores, btnVendas}) {
+        for (Button b : new Button[]{btnPdv, btnProdutos, btnCategorias, btnFornecedores, btnVendas, btnCaixa, btnHistoricoCaixas}) {
             if (b != null) {
                 b.getStyleClass().remove("active");
             }

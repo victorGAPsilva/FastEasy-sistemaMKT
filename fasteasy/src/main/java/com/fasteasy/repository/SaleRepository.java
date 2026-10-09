@@ -35,4 +35,19 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                                @Param("inicio") LocalDateTime inicio,
                                @Param("fim") LocalDateTime fim,
                                @Param("status") StatusVenda status);
+
+    /**
+     * Lista as vendas de uma sessão de caixa com os pagamentos já carregados.
+     *
+     * <p>Usado para calcular o saldo esperado e os totais por forma de
+     * pagamento sem provocar o problema de N+1 e sem manter totais
+     * redundantes.</p>
+     */
+    @Query("SELECT DISTINCT s FROM Sale s LEFT JOIN FETCH s.pagamentos " +
+           "WHERE s.cashSession.id = :sessaoId AND s.status = :status " +
+           "ORDER BY s.id ASC")
+    List<Sale> listarPorSessaoComPagamentos(@Param("sessaoId") Long sessaoId,
+                                            @Param("status") StatusVenda status);
+
+    long countByCashSessionIdAndStatus(Long sessaoId, StatusVenda status);
 }

@@ -63,10 +63,17 @@ class VendaIntegracaoTest {
     @Autowired
     private StockMovementRepository stockMovementRepository;
 
+    @Autowired private com.fasteasy.repository.CashMovementRepository cashMovementRepository;
+    @Autowired private com.fasteasy.repository.CashSessionRepository cashSessionRepository;
+    @Autowired private com.fasteasy.repository.CashRegisterRepository cashRegisterRepository;
+
     @BeforeEach
     void limparBase() {
         stockMovementRepository.deleteAll();
         saleRepository.deleteAll();
+        cashMovementRepository.deleteAll();
+        cashSessionRepository.deleteAll();
+        cashRegisterRepository.deleteAll();
         productRepository.deleteAll();
         categoryRepository.deleteAll();
     }

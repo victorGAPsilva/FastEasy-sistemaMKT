@@ -1,7 +1,7 @@
 # FastEasy — Sistema de Gestão de Supermercado
 
 Aplicação **desktop** para gestão de supermercado, construída com **Java 21 + JavaFX + Spring Boot + PostgreSQL**.
-Este repositório contém a **Parte 1** (fundação do projeto), a **Parte 2** (cadastro de **Produtos**, **Fornecedores** e **Categorias**), a base de **controle de estoque** e a **Parte 4** (frente de caixa — **PDV** — e histórico de vendas).
+Este repositório contém a **Parte 1** (fundação do projeto), a **Parte 2** (cadastro de **Produtos**, **Fornecedores** e **Categorias**), a base de **controle de estoque**, a **Parte 4** (frente de caixa — **PDV** — e histórico de vendas) e a **Parte 5** (gestão de caixa: abertura, movimentações, fechamento e histórico de sessões).
 
 ---
 
@@ -54,6 +54,16 @@ com.fasteasy
 ```
 
 A UI **não acessa o banco diretamente**: todos os formulários e tabelas conversam apenas com os **serviços de aplicação**.
+
+**Parte 5 — Gestão de Caixa** adiciona:
+- **Cadastro de caixas** (`CashRegister`) — pontos de atendimento (ex.: "Caixa 1").
+- **Sessão de caixa** (`CashSession`) — abertura com saldo inicial, movimentações e fechamento.
+- **Movimentações** (`CashMovement`) — suprimento, sangria, outras entradas e saídas (imutáveis após registro; correções via compensação).
+- **Resumo financeiro** calculado em tempo real: saldo inicial + dinheiro recebido − troco + suprimentos + outras entradas − sangrias − outras saídas = saldo esperado.
+- **Fechamento**: total contado, diferença (sobra/falta/zerado), relatório não fiscal impresso.
+- **Histórico**: consulta de sessões por caixa, período e status, com detalhes e reimpressão.
+- **Integração com PDV**: venda só é finalizada se houver sessão aberta no caixa selecionado; pagamentos em dinheiro alimentam o saldo esperado automaticamente (PIX/débito/crédito são totalizados separadamente sem impacto no dinheiro físico).
+- **Concorrência**: abertura única por caixa (índice parcial único + bloqueio pessimista), serialização de sangrias/fechamento via `PESSIMISTIC_WRITE` na sessão.
 
 ---
 
@@ -118,7 +128,7 @@ O plugin `javafx-maven-plugin` resolve automaticamente os módulos nativos do Ja
 
 Na primeira execução, o Flyway aplica as migrações que criam as tabelas de categorias, fornecedores, produtos, estoque e vendas.
 
-A janela principal possui um **menu lateral verde** com as seções **Produtos**, **Categorias**, **Fornecedores**, **PDV** e **Vendas**, uma **área principal** com os formulários/tabelas e uma **barra de status**.
+A janela principal possui um **menu lateral verde** com as seções **PDV**, **Caixa**, **Histórico de Caixas**, **Produtos**, **Categorias**, **Fornecedores** e **Vendas**, uma **área principal** com os formulários/tabelas e uma **barra de status**.
 
 ### Usando o PDV (frente de caixa)
 
@@ -136,7 +146,20 @@ Atalhos: **F2** buscar produto, **F4** pagamento, **Delete** remover item seleci
 
 O campo de código de barras é limpo e o foco retorna a ele após cada item adicionado; códigos desconhecidos exibem uma mensagem clara sem travar a tela.
 
-### Empacotamento
+### Gestão de Caixa (Parte 5)
+
+1. Selecione **Caixa** no menu lateral. A tela mostra a lista de caixas ativos.
+2. Se não houver caixas, use **Gerenciar caixas** para cadastrar (ex.: "Caixa 1").
+3. Escolha o caixa, informe o **operador**, o **saldo inicial** (fundo de troco) e confirme em **Abrir caixa**.
+4. Com a sessão aberta, o painel exibe:
+   - **Resumo financeiro** em tempo real (saldo inicial, dinheiro recebido, troco, suprimentos, sangrias, saldo esperado, totais por forma de pagamento, quantidade de vendas).
+   - **Movimentações**: botões **Suprimento**, **Sangria**, **Outra entrada**, **Outra saída** — abrem diálogo com valor e motivo obrigatório; sangrias/saídas recusadas se excederem o saldo disponível.
+   - Tabela de movimentações com filtro por tipo.
+5. Para fechar: informe o **total contado em dinheiro**, observações (opcional) e clique em **Fechar caixa**. O relatório calcula a diferença (sobra/falta/zerado), exibe o comprovante e permite **imprimir**.
+6. Use **Histórico de Caixas** para consultar sessões anteriores, filtrar por status/período, ver detalhes e reimprimir relatórios.
+7. No **PDV**, o **caixa** e o **operador** são informados no cabeçalho; a venda só é finalizada se houver sessão aberta no caixa selecionado. Pagamentos em dinheiro atualizam automaticamente o saldo esperado da sessão.
+
+Atalhos (PDV): **F2** buscar produto, **F4** pagamento, **Delete** remover item selecionado, **Esc** cancelar/fechar.
 
 Para gerar o JAR executável (fat jar) com o Spring Boot:
 
@@ -233,6 +256,7 @@ As migrações ficam em `src/main/resources/db/migration`:
 - `V1.0.1__create_product_tables.sql` — tabelas de categorias, fornecedores e produtos, índices e restrições.
 - `V1.0.2__create_stock_tables.sql` — coluna de estoque atual e tabela de movimentações.
 - `V1.0.3__create_sales_tables.sql` — tabelas de vendas, itens e pagamentos, além do vínculo da movimentação `SALE_EXIT` com a venda.
+- `V1.0.4__create_cash_tables.sql` — tabelas de caixas, sessões, movimentações de caixa, vínculo vendas→sessão, índice único parcial para sessão aberta por caixa e *check constraints* de valores não negativos.
 
 O Flyway roda automaticamente na inicialização da aplicação (configurável em `application.properties`). As migrações são **incrementais**: migrações já aplicadas não são alteradas.
 
@@ -270,6 +294,6 @@ fasteasy/
 
 ## Escopo e limitações
 
-**Incluído:** fundação do projeto (Parte 1); cadastro de produtos, fornecedores e categorias (Parte 2); base de controle de estoque; e frente de caixa (PDV) com finalização de venda, baixa de estoque, comprovante e histórico de vendas (Parte 4).
+**Incluído:** fundação do projeto (Parte 1); cadastro de produtos, fornecedores e categorias (Parte 2); base de controle de estoque; frente de caixa (PDV) com finalização de venda, baixa de estoque, comprovante e histórico de vendas (Parte 4); **gestão de caixa** com abertura, movimentações (suprimento/sangria/ajustes), fechamento com conferência e diferença, relatório não fiscal, histórico de sessões e integração PDV↔caixa (Parte 5).
 
-**Fora de escopo (não implementado nesta etapa):** fechamento/abertura de caixa, compras de fornecedores, relatórios gerenciais completos, integração com gateways de pagamento (cartão/PIX online), documentos fiscais e coleta de dados sensíveis de cartão. **Cancelamento de venda com estorno de estoque** não está disponível na interface nesta etapa (o modelo de dados já contempla o status `CANCELLED`, mas a operação fica para uma etapa futura, de forma explícita e auditável). O sistema foi projetado para que esses módulos sejam adicionados sem quebrar o que já existe.
+**Fora de escopo (não implementado nesta etapa):** compras de fornecedores, relatórios gerenciais completos, integração com gateways de pagamento (cartão/PIX online), documentos fiscais e coleta de dados sensíveis de cartão. **Cancelamento de venda com estorno de estoque** não está disponível na interface nesta etapa (o modelo de dados já contempla o status `CANCELLED`, mas a operação fica para uma etapa futura, de forma explícita e auditável). O sistema foi projetado para que esses módulos sejam adicionados sem quebrar o que já existe.

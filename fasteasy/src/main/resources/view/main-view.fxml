@@ -21,6 +21,9 @@
             <Separator/>
             <VBox fx:id="menuLateral" spacing="2">
                 <Button fx:id="btnPdv" text="  PDV (Frente de Caixa)" styleClass="menu-button" onAction="#handleMenuPdv"/>
+                <Button fx:id="btnCaixa" text="  Caixa" styleClass="menu-button" onAction="#handleMenuCaixa"/>
+                <Button fx:id="btnHistoricoCaixas" text="  Histórico de Caixas" styleClass="menu-button" onAction="#handleMenuHistoricoCaixas"/>
+                <Separator/>
                 <Button fx:id="btnProdutos" text="  Produtos" styleClass="menu-button" onAction="#handleMenuProdutos"/>
                 <Button fx:id="btnCategorias" text="  Categorias" styleClass="menu-button" onAction="#handleMenuCategorias"/>
                 <Button fx:id="btnFornecedores" text="  Fornecedores" styleClass="menu-button" onAction="#handleMenuFornecedores"/>

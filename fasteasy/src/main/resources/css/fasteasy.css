@@ -1,0 +1,172 @@
+/* ============================================================
+   FastEasy - Identidade visual
+   Verde como cor principal, fundo claro.
+   ============================================================ */
+
+.root {
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-background-color: #ecf0f1;
+    -fx-focus-color: #27ae60;
+    -fx-faint-focus-color: #27ae6033;
+}
+
+/* --- Menu lateral --- */
+.sidebar {
+    -fx-background-color: #1b5e20;
+}
+
+.sidebar-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-padding: 20 0 10 15;
+}
+
+.sidebar-subtitle {
+    -fx-font-size: 11px;
+    -fx-text-fill: #a5d6a7;
+    -fx-padding: 0 0 15 17;
+}
+
+.menu-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e8f5e9;
+    -fx-font-size: 14px;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 12 15 12 18;
+    -fx-background-radius: 0;
+    -fx-cursor: hand;
+    -fx-max-width: Infinity;
+}
+
+.menu-button:hover {
+    -fx-background-color: #2e7d32;
+}
+
+.menu-button:pressed,
+.menu-button.active {
+    -fx-background-color: #43a047;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+/* --- Área principal --- */
+.content-area {
+    -fx-background-color: #ecf0f1;
+    -fx-padding: 20;
+}
+
+.page-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1b5e20;
+}
+
+.section-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+.card {
+    -fx-background-color: white;
+    -fx-border-color: #d5dbdb;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 2);
+}
+
+/* --- Botões --- */
+.button-primary {
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 4;
+    -fx-padding: 8 18 8 18;
+    -fx-cursor: hand;
+}
+
+.button-primary:hover {
+    -fx-background-color: #219150;
+}
+
+.button-secondary {
+    -fx-background-color: #95a5a6;
+    -fx-text-fill: white;
+    -fx-background-radius: 4;
+    -fx-padding: 8 18 8 18;
+    -fx-cursor: hand;
+}
+
+.button-danger {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-background-radius: 4;
+    -fx-padding: 8 18 8 18;
+    -fx-cursor: hand;
+}
+
+/* --- Tabelas --- */
+.table-view {
+    -fx-background-color: white;
+    -fx-border-color: #d5dbdb;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #1b5e20;
+}
+
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: transparent;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #f4f9f4;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #c8e6c9;
+    -fx-text-fill: #1b5e20;
+}
+
+/* --- Formulários --- */
+.form-label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #2c3e50;
+}
+
+.text-field, .text-area, .combo-box, .date-picker {
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-border-color: #cfd8dc;
+}
+
+.text-field:focused, .text-area:focused, .combo-box:focused {
+    -fx-border-color: #27ae60;
+}
+
+/* --- Status --- */
+.status-active {
+    -fx-text-fill: #27ae60;
+    -fx-font-weight: bold;
+}
+
+.status-inactive {
+    -fx-text-fill: #e74c3c;
+    -fx-font-weight: bold;
+}
+
+.status-bar {
+    -fx-background-color: #1b5e20;
+    -fx-text-fill: #e8f5e9;
+    -fx-padding: 6 12 6 12;
+    -fx-font-size: 12px;
+}

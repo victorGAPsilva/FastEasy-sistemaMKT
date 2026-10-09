@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.fasteasy.presentation.controller.MainController"
+            styleClass="root"
+            prefWidth="1280" prefHeight="800">
+
+    <left>
+        <VBox styleClass="sidebar" prefWidth="240">
+            <Label text="FastEasy" styleClass="sidebar-title"/>
+            <Label text="Gestão de Supermercado" styleClass="sidebar-subtitle"/>
+            <Separator/>
+            <VBox fx:id="menuLateral" spacing="2">
+                <Button fx:id="btnProdutos" text="  Produtos" styleClass="menu-button" onAction="#handleMenuProdutos"/>
+                <Button fx:id="btnCategorias" text="  Categorias" styleClass="menu-button" onAction="#handleMenuCategorias"/>
+                <Button fx:id="btnFornecedores" text="  Fornecedores" styleClass="menu-button" onAction="#handleMenuFornecedores"/>
+            </VBox>
+            <Region VBox.vgrow="ALWAYS"/>
+            <Button fx:id="btnSair" text="  Sair" styleClass="menu-button" onAction="#handleSair"/>
+        </VBox>
+    </left>
+
+    <center>
+        <VBox styleClass="content-area" spacing="16">
+            <Label fx:id="tituloAreaPrincipal" text="FastEasy" styleClass="page-title"/>
+            <HBox fx:id="barraAcoes" spacing="10"/>
+            <VBox fx:id="conteudoPrincipal" spacing="16" VBox.vgrow="ALWAYS"/>
+        </VBox>
+    </center>
+
+    <bottom>
+        <Label fx:id="statusBar" text="Pronto" styleClass="status-bar" maxWidth="Infinity"/>
+    </bottom>
+
+</BorderPane>

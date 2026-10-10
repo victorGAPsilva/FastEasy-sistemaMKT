@@ -24,6 +24,9 @@
                 <Button fx:id="btnCaixa" text="  Caixa" styleClass="menu-button" onAction="#handleMenuCaixa"/>
                 <Button fx:id="btnHistoricoCaixas" text="  Histórico de Caixas" styleClass="menu-button" onAction="#handleMenuHistoricoCaixas"/>
                 <Separator/>
+                <Button fx:id="btnContasPagar" text="  Contas a Pagar" styleClass="menu-button" onAction="#handleMenuContasPagar"/>
+                <Button fx:id="btnFluxoCaixa" text="  Fluxo de Caixa" styleClass="menu-button" onAction="#handleMenuFluxoCaixa"/>
+                <Separator/>
                 <Button fx:id="btnProdutos" text="  Produtos" styleClass="menu-button" onAction="#handleMenuProdutos"/>
                 <Button fx:id="btnCategorias" text="  Categorias" styleClass="menu-button" onAction="#handleMenuCategorias"/>
                 <Button fx:id="btnFornecedores" text="  Fornecedores" styleClass="menu-button" onAction="#handleMenuFornecedores"/>

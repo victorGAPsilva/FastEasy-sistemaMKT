@@ -8,6 +8,9 @@ import com.fasteasy.presentation.view.*;
 import com.fasteasy.service.CashRegisterService;
 import com.fasteasy.service.CashSessionService;
 import com.fasteasy.service.CategoryService;
+import com.fasteasy.service.ExpenseCategoryService;
+import com.fasteasy.service.FinancialService;
+import com.fasteasy.service.PayableAccountService;
 import com.fasteasy.service.ProductService;
 import com.fasteasy.service.SupplierService;
 import javafx.event.ActionEvent;
@@ -42,6 +45,8 @@ public class MainController {
     private final TelaHistoricoVendas telaHistoricoVendas;
     private final TelaCaixa telaCaixa;
     private final TelaHistoricoCaixas telaHistoricoCaixas;
+    private final TelaContasPagar telaContasPagar;
+    private final TelaFluxoCaixa telaFluxoCaixa;
 
     @FXML private VBox conteudoPrincipal;
     @FXML private Label tituloAreaPrincipal;
@@ -53,6 +58,8 @@ public class MainController {
     @FXML private Button btnVendas;
     @FXML private Button btnCaixa;
     @FXML private Button btnHistoricoCaixas;
+    @FXML private Button btnContasPagar;
+    @FXML private Button btnFluxoCaixa;
     @FXML private Button btnSair;
 
     private VBox telaProdutos;
@@ -62,6 +69,9 @@ public class MainController {
     public MainController(ProductService productService,
                           CategoryService categoryService,
                           SupplierService supplierService,
+                          ExpenseCategoryService expenseCategoryService,
+                          FinancialService financialService,
+                          PayableAccountService payableAccountService,
                           FormProduto formProduto,
                           TabelaProdutos tabelaProdutos,
                           FormCategoria formCategoria,
@@ -71,7 +81,9 @@ public class MainController {
                           TelaPdv telaPdv,
                           TelaHistoricoVendas telaHistoricoVendas,
                           TelaCaixa telaCaixa,
-                          TelaHistoricoCaixas telaHistoricoCaixas) {
+                          TelaHistoricoCaixas telaHistoricoCaixas,
+                          TelaContasPagar telaContasPagar,
+                          TelaFluxoCaixa telaFluxoCaixa) {
         this.productService = productService;
         this.categoryService = categoryService;
         this.supplierService = supplierService;
@@ -85,6 +97,8 @@ public class MainController {
         this.telaHistoricoVendas = telaHistoricoVendas;
         this.telaCaixa = telaCaixa;
         this.telaHistoricoCaixas = telaHistoricoCaixas;
+        this.telaContasPagar = telaContasPagar;
+        this.telaFluxoCaixa = telaFluxoCaixa;
     }
 
     @FXML
@@ -172,6 +186,24 @@ public class MainController {
         conteudoPrincipal.getChildren().setAll(telaHistoricoCaixas);
         telaHistoricoCaixas.atualizarLista();
         marcarAtivo(btnHistoricoCaixas);
+    }
+
+    @FXML
+    private void handleMenuContasPagar(ActionEvent event) {
+        tituloAreaPrincipal.setText("Contas a Pagar");
+        definirStatus("Gestão de obrigações financeiras e despesas");
+        conteudoPrincipal.getChildren().setAll(telaContasPagar);
+        telaContasPagar.aoExibir();
+        marcarAtivo(btnContasPagar);
+    }
+
+    @FXML
+    private void handleMenuFluxoCaixa(ActionEvent event) {
+        tituloAreaPrincipal.setText("Fluxo de Caixa");
+        definirStatus("Visualização de fluxo financeiro previsto e realizado");
+        conteudoPrincipal.getChildren().setAll(telaFluxoCaixa);
+        telaFluxoCaixa.aoExibir();
+        marcarAtivo(btnFluxoCaixa);
     }
 
     private void configurarAtalhos() {
@@ -305,7 +337,7 @@ public class MainController {
     }
 
     private void marcarAtivo(Button ativo) {
-        for (Button b : new Button[]{btnPdv, btnProdutos, btnCategorias, btnFornecedores, btnVendas, btnCaixa, btnHistoricoCaixas}) {
+        for (Button b : new Button[]{btnPdv, btnProdutos, btnCategorias, btnFornecedores, btnVendas, btnCaixa, btnHistoricoCaixas, btnContasPagar, btnFluxoCaixa}) {
             if (b != null) {
                 b.getStyleClass().remove("active");
             }
